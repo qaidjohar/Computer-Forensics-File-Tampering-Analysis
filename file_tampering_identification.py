@@ -1,6 +1,21 @@
+#!/usr/bin/env python
+
 import glob, os
 import hashlib
 import json
+import argparse
+import sys
+
+def parse_args():
+	#Create the arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-g", "--generate", help="Generates the hashdump file for the selected directory.",action="store_true")
+    parser.add_argument("-c", "--check", help="Checks for file tampering using the hashdump file.",action="store_true")
+    parser.add_argument("-d", "--dump", help="Path to the hashdump file. Example: -d /root/username/xyz/hashdump.json")
+    parser.add_argument("-p", "--path", help="Directory path for generation/checking. Example: -p /root/username/xyz/impDir/")
+    return parser#.parse_args()
+    
+
 
 def md5(fname):
 	"""
@@ -25,7 +40,7 @@ def hashGenerator(filePaths,rootPath):
 	for filename in filePaths:
 		hashdump = md5(filename)
 		filenameShort = filename.replace(rootPath,"")
-		print filenameShort
+		#print filenameShort
 		data[filenameShort] = hashdump	
 	return data
 
@@ -44,13 +59,60 @@ def filepathScan(directory):
     return filePaths  #returning the list with path of all files
 
 
-		
+def generate(dumpfile,path):
+	if path[-1] != "/":
+		path += "/"
+	filePaths = filepathScan(path)
+	#print rootPath
+	hashdata = hashGenerator(filePaths,path)
+	with open(dumpfile, 'w') as fp:
+	    json.dump(hashdata, fp)
 
-rootPath = raw_input("Enter the directory path: ")
-if rootPath[-1] != "/":
-	rootPath += "/"
-filePaths = filepathScan(rootPath)
-print rootPath
-hashdata = hashGenerator(filePaths,rootPath)
-with open('hashdump.json', 'w') as fp:
-    json.dump(hashdata, fp)
+def check(dumpfile,path):
+	if path[-1] != "/":
+		path += "/"
+	filePaths = filepathScan(path)
+	#print rootPath
+	hashdata = hashGenerator(filePaths,path)
+	with open(dumpfile, 'r') as fp:
+		verificationData = json.load(fp)
+	for key in hashdata:
+		if key in verificationData:
+			if hashdata[key] != verificationData[key]:
+				print str(key) + " is tampered."
+		else:
+			print str(key) + " hashdump data not available."
+			
+	for key in verificationData:
+		if not key in hashdata:
+			print str(key) + " is deleted/unavailable."
+
+
+
+########################################
+######### Start of Program #############
+########################################
+
+if __name__ == "__main__":
+	parse = parse_args()
+	args = parse.parse_args()
+	if args.dump and args.path:
+		if os.path.isdir(args.dump):
+			print "Invalid Input. dump should be a file, not a directory."
+			sys.exit(1)
+		if not os.path.isdir(args.path):
+			print "Invalid Input. path should be a directory, not a file."
+			sys.exit(1)
+		
+		if args.generate:
+			generate(args.dump, args.path)
+		elif args.check:
+			check(args.dump, args.path)
+		else:
+			print "Invalid Command Line Arguments. \n"
+			parse.print_help()
+			sys.exit(1)
+	else:
+		print "Invalid Command Line Arguments. \n" 
+		parse.print_help()
+		sys.exit(1)
