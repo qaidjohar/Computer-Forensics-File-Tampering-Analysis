@@ -7,4 +7,4 @@ Status: Under Development
 - Itereate through input directory recursively.
 - Generate MD5 hash of all the files in that directory.
 - Store all the hash and file name dictionary in hashdump.json file
-- Validates the files
+
